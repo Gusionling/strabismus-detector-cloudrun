@@ -1,5 +1,5 @@
 import tensorflow as tf
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, Form
 import numpy as np
 from fastapi.middleware.cors import CORSMiddleware
 import io
@@ -27,7 +27,12 @@ def preprocess_image(img):
 
 
 @app.post("/predict/")
-async def predict(file: UploadFile = File(...)):
+async def predict(
+        file: UploadFile = File(...),
+        name: str = Form(...),
+        age: int = Form(...),
+        sex: str = Form(...)    
+    ):
     # Read the uploaded image file
     contents = await file.read()
 
@@ -54,4 +59,14 @@ async def predict(file: UploadFile = File(...)):
                                                                                    confidence))
 
     # Return the prediction result
-    return {"class": class_names[predicted_class], "confidence": confidence}
+    return {
+        "patient": {
+            "name": name,
+            "age": age,
+            "sex": sex
+        },
+        "prediction": {
+            "class": class_names[predicted_class],
+            "confidence": confidence
+        }
+    }
