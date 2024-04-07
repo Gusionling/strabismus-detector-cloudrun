@@ -1,32 +1,34 @@
-// ResponseModal.js
 import React from 'react';
 import Modal from 'react-modal';
 
+// Define the custom styles
 const customStyles = {
   content: {
-    background: '#1a1a1a', 
-    color: '#ffffff !important', 
+    background: '#1a1a1a',
+    color: '#ffffff',
     border: 'none',
     borderRadius: '10px',
-    maxWidth: '400px', // Adjust as needed
+    maxWidth: '400px',
     margin: 'auto',
+    fontFamily: 'sans-serif', // Use sans-serif font
   },
 };
 
-
-const ResponseModal = ({ isOpen, onRequestClose, responseMessage }) => {
+const ResponseModal = ({ isOpen, onRequestClose, responseMessage, responseImage }) => {
   return (
     <Modal
       isOpen={isOpen}
       onRequestClose={onRequestClose}
       contentLabel="Response Modal"
-      customStyles={customStyles}
+      style={customStyles} // Apply the custom styles
     >
       <h2>Prediction Result</h2>
       <div>
         {responseMessage.split('\n').map((line, index) => (
           <p key={index}>{line}</p>
         ))}
+        {/* Display the image from the API response */}
+        {responseImage && <img src={responseImage} alt="Prediction Result" />}
       </div>
       <button
         onClick={onRequestClose}
@@ -38,8 +40,11 @@ const ResponseModal = ({ isOpen, onRequestClose, responseMessage }) => {
           border: 'none',
           color: 'white',
           cursor: 'pointer',
+          fontSize: '20px', // Make the close button a cross
         }}
-      > Close </button>
+      >
+        &times; {/* Use the HTML entity for a cross */}
+      </button>
     </Modal>
   );
 };
