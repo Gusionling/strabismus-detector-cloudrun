@@ -8,9 +8,12 @@ const customStyles = {
     color: '#ffffff',
     border: 'none',
     borderRadius: '10px',
-    maxWidth: '400px',
+    maxWidth: '800px',
     margin: 'auto',
     fontFamily: 'sans-serif', // Use sans-serif font
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
   },
 };
 
@@ -27,8 +30,7 @@ const ResponseModal = ({ isOpen, onRequestClose, responseMessage, responseImage 
         {responseMessage.split('\n').map((line, index) => (
           <p key={index}>{line}</p>
         ))}
-        {/* Display the image from the API response */}
-        {responseImage && <img src={responseImage} alt="Prediction Result" />}
+        {responseImage && <img src={responseImage} alt="Prediction Result" className='preview-image' />}
       </div>
       <button
         onClick={onRequestClose}

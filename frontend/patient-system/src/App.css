@@ -91,3 +91,7 @@ body{
 .patient-form h2 {
   margin-bottom: 20px;
 }
+
+.preview-image {
+  max-width: 400px;
+}

@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import ResponseModal from './ResultModal'; 
 
 const PatientForm = () => {
-  let imageUrl = null;
-
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [sex, setSex] = useState('');
@@ -57,7 +55,6 @@ const PatientForm = () => {
       if (response.ok) {
         console.log('Patient data submitted successfully!');
         const data = await response.json();
-        imageUrl = data.prediction.image;
         setResponseMessage(`
           Patient Name: ${data.patient.name}
           Patient Age: ${data.patient.age}
@@ -84,33 +81,37 @@ const PatientForm = () => {
           type="text"
           placeholder="Name"
           value={name}
-          onChange={handleNameChange}
+          onChange={handleNameChange} 
+          required={true}
         />
         <input
           type="number"
           placeholder="Age"
           value={age}
           onChange={handleAgeChange}
+          required={true}
         />
         <input
           type="text"
           placeholder="Sex"
           value={sex}
           onChange={handleSexChange}
+          required={true}
         />
         <input
           type="file"
           accept="image/*"
           onChange={handleImageChange}
+          required={true}
         />
         <button type="submit">Submit</button>
       </form>
-      {eyeImagePreviewUrl && <img src={eyeImagePreviewUrl} alt="Eye Preview" />}
+      {eyeImagePreviewUrl && <img src={eyeImagePreviewUrl} alt="Eye Preview" className='preview-image' />}
       <ResponseModal
         isOpen={modalIsOpen}
         onRequestClose={handleModalClose}
         responseMessage={responseMessage}
-        responseImage={imageUrl}
+        responseImage={eyeImagePreviewUrl}
       />
     </div>
   );

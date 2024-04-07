@@ -35,7 +35,7 @@ async def predict(
     ):
     # Read the uploaded image file
     contents = await file.read()
-
+    
     # Decode the image using OpenCV
     img = cv2.imdecode(np.frombuffer(contents, np.uint8), -1)
 
@@ -48,6 +48,7 @@ async def predict(
 
     # Make predictions using the loaded model
     predictions = model.predict(img_array)
+
     score = tf.nn.softmax(predictions[0])
 
     predicted_class = np.argmax(score)  # Get the predicted class index
