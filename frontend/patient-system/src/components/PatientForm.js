@@ -6,6 +6,7 @@ const PatientForm = () => {
   const [age, setAge] = useState('');
   const [sex, setSex] = useState('');
   const [eyeImage, setEyeImage] = useState(null);
+  const [responseImage, setResponseImage] = useState(null);
 
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [responseMessage, setResponseMessage] = useState('');
@@ -50,16 +51,22 @@ const PatientForm = () => {
       const response = await fetch('http://127.0.0.1:8000/predict', {
         method: 'POST',
         body: formData,
+        headers: {
+          
+        }
       });
   
       if (response.ok) {
         console.log('Patient data submitted successfully!');
         const data = await response.json();
+        setResponseImage(data.patient.image);
         setResponseMessage(`
           Patient Name: ${data.patient.name}
           Patient Age: ${data.patient.age}
           Patient Sex: ${data.patient.sex}
           Prediction: ${data.prediction.class} 
+          Confidence: ${data.prediction.confidence} 
+          Condition: ${data.prediction.condition} 
         `);
         setModalIsOpen(true); // Open the modal
       } else {
@@ -111,7 +118,7 @@ const PatientForm = () => {
         isOpen={modalIsOpen}
         onRequestClose={handleModalClose}
         responseMessage={responseMessage}
-        responseImage={eyeImagePreviewUrl}
+        responseImage={responseImage}
       />
     </div>
   );

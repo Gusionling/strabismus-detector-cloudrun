@@ -18,6 +18,7 @@ const customStyles = {
 };
 
 const ResponseModal = ({ isOpen, onRequestClose, responseMessage, responseImage }) => {
+  console.log("Response Image "+ responseImage)
   return (
     <Modal
       isOpen={isOpen}
