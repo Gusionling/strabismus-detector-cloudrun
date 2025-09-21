@@ -45,6 +45,16 @@ app.add_middleware(
 async def root():
     return {"message": "Strabismus Detector API is running"}
 
+@app.get("/health")
+async def health_check():
+    # 모델이 로드되었는지 확인
+    if model is None:
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": "Model not loaded"}
+        )
+    return {"status": "healthy", "model_loaded": model is not None}
+
 def preprocess_image(img):
     # Resize to 300x70 pixels
     img_resized = cv2.resize(img, (300, 70))
@@ -63,6 +73,8 @@ async def predict(
 
         # Decode the image using OpenCV
         img = cv2.imdecode(np.frombuffer(contents, np.uint8), -1)
+        if img.shape[-1] == 4:  # RGBA 이미지인 경우
+            img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
 
         # Convert the image to grayscale
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -137,3 +149,7 @@ async def predict(
             status_code=500,
             content={"error": f"An error occurred during processing: {str(e)}"}
         )
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
