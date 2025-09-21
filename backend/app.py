@@ -3,14 +3,29 @@ import numpy as np
 import os
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, UploadFile, File, Form
+from fastapi.responses import JSONResponse
 from tensorflow.keras.models import load_model
 import tensorflow as tf
+
+# 애플리케이션 기본 경로 설정
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# 모델 파일 경로
+MODEL_PATH = os.path.join(BASE_DIR, 'model.h5')
 
 # Load the pre-trained Haar cascade for eye detection
 eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
 
 # Load your trained TensorFlow model
-model = load_model('./model.h5')
+try:
+    model = load_model(MODEL_PATH)
+except Exception as e:
+    print(f"모델 로드 오류: {e}")
+    try:
+        model = tf.keras.models.load_model(MODEL_PATH)
+    except Exception as e:
+        print(f"두 번째 시도에서도 모델 로드 실패: {e}")
+        model = None
 
 app = FastAPI(
     title="Strabismus Detector API",
@@ -40,86 +55,85 @@ async def predict(
     file: UploadFile = File(...),
     name: str = Form(...),
     age: int = Form(...),
-    sex: str = Form(...)    
+    sex: str = Form(...)
     ):
+    try:
+        # Read the uploaded image file
+        contents = await file.read()
 
-    print("hi")
-    # Read the uploaded image file
-    contents = await file.read()
-    
-    # Decode the image using OpenCV
-    img = cv2.imdecode(np.frombuffer(contents, np.uint8), -1)
+        # Decode the image using OpenCV
+        img = cv2.imdecode(np.frombuffer(contents, np.uint8), -1)
 
-    # Convert the image to grayscale
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # Convert the image to grayscale
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # Perform eye detection
-    eyes = eye_cascade.detectMultiScale(gray, 1.1, 4)
+        # Perform eye detection
+        eyes = eye_cascade.detectMultiScale(gray, 1.1, 4)
 
-    # Check if 2 or more eyes are detected
-    if len(eyes) >= 2:
-        # Sort eyes by x coordinate
-        sorted_eyes = sorted(eyes, key=lambda x: x[0])
+        # Check if 2 or more eyes are detected
+        if len(eyes) >= 2:
+            # Sort eyes by x coordinate
+            sorted_eyes = sorted(eyes, key=lambda x: x[0])
 
-        # Get the leftmost and rightmost eyes
-        left_eye = sorted_eyes[0]
-        right_eye = sorted_eyes[-1]
+            # Get the leftmost and rightmost eyes
+            left_eye = sorted_eyes[0]
+            right_eye = sorted_eyes[-1]
 
-        # Create a bounding box that encompasses both eyes
-        box_start = (left_eye[0], min(left_eye[1], right_eye[1]))
-        box_end = (right_eye[0] + right_eye[2], max(left_eye[1] + left_eye[3], right_eye[1] + right_eye[3]))
+            # Create a bounding box that encompasses both eyes
+            box_start = (left_eye[0], min(left_eye[1], right_eye[1]))
+            box_end = (right_eye[0] + right_eye[2], max(left_eye[1] + left_eye[3], right_eye[1] + right_eye[3]))
 
-        filepath = "./db/"+name+".jpg"
+            # Crop the image to include only the region with both eyes
+            cropped_img = img[box_start[1]:box_end[1], box_start[0]:box_end[0]]
 
-        cv2.rectangle(img, box_start, box_end, (0, 255, 0), 5)
-        cv2.imwrite(filepath, img)
+            # Preprocess the cropped image
+            img_preprocessed = preprocess_image(cropped_img)
 
-        filepath = "http://localhost:8000/db/"+name+".jpg"
+            # Convert to a format compatible with TensorFlow
+            img_array = tf.keras.preprocessing.image.img_to_array(img_preprocessed)
+            img_array = np.expand_dims(img_array, axis=0)  # Create a batch
 
-        # Crop the image to include only the region with both eyes
-        cropped_img = img[box_start[1]:box_end[1], box_start[0]:box_end[0]]
+            # Make predictions using the loaded model
+            predictions = model.predict(img_array)
 
-        # Preprocess the cropped image
-        img_preprocessed = preprocess_image(cropped_img)
+            score = tf.nn.softmax(predictions[0])
 
-        # Convert to a format compatible with TensorFlow
-        img_array = tf.keras.preprocessing.image.img_to_array(img_preprocessed)
-        img_array = np.expand_dims(img_array, axis=0)  # Create a batch
+            predicted_class = np.argmax(score)  # Get the predicted class index
+            confidence = float(100 * np.max(score))  # Calculate confidence and convert to native float
 
-        # Make predictions using the loaded model
-        predictions = model.predict(img_array)
+            class_names = ['esotropia', 'exotropia', 'hypertropia', 'hypotropia', 'normal']
 
-        score = tf.nn.softmax(predictions[0])
+            print(f"This image most likely belongs to {class_names[predicted_class]} with a {confidence:.2f}% confidence.")
 
-        predicted_class = np.argmax(score)  # Get the predicted class index
-        confidence = 100 * np.max(score)  # Calculate confidence
+            conditions = ['Mild', 'Moderate', 'Severe']
 
-        class_names = ['esotropia', 'exotropia', 'hypertropia', 'hypotropia', 'normal']  # Update with your class names
+            if confidence < 30:
+                condition = conditions[0]
+            elif confidence < 60:
+                condition = conditions[1]
+            else:
+                condition = conditions[2]
 
-        print("This image most likely belongs to {} with a {:.2f}% confidence.".format(class_names[predicted_class],
-                                                                                       confidence))        
-        conditions = ['Mild', 'Moderate', 'Severe']
-
-        if confidence < 30:
-            condition = conditions[0]
-        elif confidence < 60:
-            condition = conditions[1]
-        else:
-            condition = conditions[2]
-
-        # Return the prediction result
-        return {
-            "patient": {
-                "name": name,
-                "age": age,
-                "sex": sex,
-                "image": filepath
-            },
-            "prediction": {
-                "class": class_names[predicted_class],
-                "confidence": confidence,
-                "condition": condition,
+            # Return the prediction result
+            return {
+                "patient": {
+                    "name": name,
+                    "age": age,
+                    "sex": sex
+                },
+                "prediction": {
+                    "class": class_names[predicted_class],
+                    "confidence": confidence,
+                    "condition": condition,
+                }
             }
-        }
-    else:
-        return {"error": "Less than two eyes detected"}
+        else:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Less than two eyes detected in the image"}
+            )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"An error occurred during processing: {str(e)}"}
+        )
