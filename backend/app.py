@@ -1,10 +1,10 @@
 import cv2
 import numpy as np
+import os
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, UploadFile, File, Form
 from tensorflow.keras.models import load_model
 import tensorflow as tf
-from fastapi.staticfiles import StaticFiles
 
 # Load the pre-trained Haar cascade for eye detection
 eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
@@ -12,16 +12,23 @@ eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml
 # Load your trained TensorFlow model
 model = load_model('./model.h5')
 
-app = FastAPI()
-app.mount("/db", StaticFiles(directory="db"), name="db")
+app = FastAPI(
+    title="Strabismus Detector API",
+    description="사시 감지 및 분류를 위한 API",
+    version="1.0.0",
+)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+@app.get("/")
+async def root():
+    return {"message": "Strabismus Detector API is running"}
 
 def preprocess_image(img):
     # Resize to 300x70 pixels
